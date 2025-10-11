@@ -1,35 +1,25 @@
 import { renderToString } from 'react-dom/server'
-import { StaticRouter, Routes, Route } from 'react-router-dom'
-import RootLayout from '../../app/layout'
-import { generateRoutes } from './router'
-
-function RouteWithLayouts({ layouts, component: Component, isClient, path }) {
-  if (isClient) {
-    return <div data-client-component={path}></div>
-  }
-
-  return layouts.reduceRight((child, Layout) => <Layout>{child}</Layout>, <Component />)
-}
+import { generateRoutes, matchRoute } from './router'
 
 export function render(url) {
-  const cleanUrl = new URL(url, 'http://localhost').pathname
   const routes = generateRoutes()
+  const matchedRoute = matchRoute(url, routes)
+  
+  if (!matchedRoute) {
+    return { html: '<h1>404</h1>' }
+  }
 
-  const html = renderToString(
-    <StaticRouter location={cleanUrl}>
-      <RootLayout>
-        <Routes>
-          {routes.map(({ path, component, layouts, isClient }) => (
-            <Route
-              key={path}
-              path={path}
-              element={<RouteWithLayouts layouts={layouts} component={component} isClient={isClient} path={path} />}
-            />
-          ))}
-        </Routes>
-      </RootLayout>
-    </StaticRouter>
-  )
+  const { component: Component, layouts, isClient, params, searchParams } = matchedRoute
+  
+  let content
+  if (isClient) {
+    content = <div data-client-component={matchedRoute.path}></div>
+  } else {
+    content = <Component params={params} searchParams={searchParams} />
+  }
+  
+  content = layouts.reduceRight((child, Layout) => <Layout>{child}</Layout>, content)
 
+  const html = renderToString(content)
   return { html }
 }

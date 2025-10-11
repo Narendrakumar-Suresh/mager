@@ -1,51 +1,54 @@
-// entry-client.jsx
 import { StrictMode, useEffect, useState } from 'react'
 import { hydrateRoot } from 'react-dom/client'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import RootLayout from '../../app/layout'
-import { generateRoutes } from './router'
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
+import { generateRoutes, matchRoute } from './router'
 
 function ClientComponentWrapper({ component: Component, path }) {
   const [mounted, setMounted] = useState(false)
+  const location = useLocation()
   
   useEffect(() => {
     setMounted(true)
   }, [])
   
   if (!mounted) {
-    // Match server's empty div during hydration
     return <div data-client-component={path}></div>
   }
   
-  // After hydration, render the actual component
-  return <Component />
+  const routes = generateRoutes()
+  const fullUrl = `http://localhost${location.pathname}${location.search}`
+  const matched = matchRoute(fullUrl, routes)
+  
+  return <Component params={matched?.params || {}} searchParams={matched?.searchParams || {}} />
 }
 
-function RouteWithLayouts({ layouts, component: Component, isClient, path }) {
+function DynamicRoute() {
+  const location = useLocation()
+  const routes = generateRoutes()
+  const fullUrl = `http://localhost${location.pathname}${location.search}`
+  const matched = matchRoute(fullUrl, routes)
+
+  if (!matched) return <h1>404</h1>
+
+  const { component: Component, layouts, isClient, params, searchParams } = matched
+
+  let content
   if (isClient) {
-    return <ClientComponentWrapper component={Component} path={path} />
+    content = <ClientComponentWrapper component={Component} path={matched.path} />
+  } else {
+    content = <Component params={params} searchParams={searchParams} />
   }
 
-  return layouts.reduceRight((child, Layout) => <Layout>{child}</Layout>, <Component />)
+  return layouts.reduceRight((child, Layout) => <Layout>{child}</Layout>, content)
 }
-
-const routes = generateRoutes()
 
 hydrateRoot(
   document.getElementById('root'),
   <StrictMode>
     <BrowserRouter>
-      <RootLayout>
-        <Routes>
-          {routes.map(({ path, component, layouts, isClient }) => (
-            <Route
-              key={path}
-              path={path}
-              element={<RouteWithLayouts layouts={layouts} component={component} isClient={isClient} path={path} />}
-            />
-          ))}
-        </Routes>
-      </RootLayout>
+      <Routes>
+        <Route path="*" element={<DynamicRoute />} />
+      </Routes>
     </BrowserRouter>
   </StrictMode>
 )

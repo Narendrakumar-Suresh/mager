@@ -21,27 +21,31 @@ export function generateRoutes() {
     const rawPath = path
       .replace('../../app', '')
       .replace(/\/index\.(jsx|tsx)$/, '')
-      .replace(/\[\.\.\.(\w+)\]/g, '*') // catch-all: [...slug]
-      .replace(/\[(\w+)\]/g, ':$1')     // dynamic: [id]
+      .replace(/\[\.\.\.(\w+)\]/g, '*')
+      .replace(/\[(\w+)\]/g, ':$1')
 
     const routePath = rawPath === '' ? '/' : rawPath
     
-    const dirPath = path.replace(/\/index\.(jsx|tsx)$/, '')
     const layoutComponents = []
+    const pathSegments = path.replace('../../app/', '').split('/').slice(0, -1)
     
-    // Collect all parent layouts
-    let currentPath = dirPath
-    const layoutPaths = []
-    
-    while (currentPath !== '../../app') {
-      layoutPaths.unshift(currentPath)
-      currentPath = currentPath.substring(0, currentPath.lastIndexOf('/'))
+    // Only get the deepest layout (closest to the page)
+    for (let i = pathSegments.length - 1; i >= 0; i--) {
+      const layoutPath = '../../app/' + pathSegments.slice(0, i + 1).join('/')
+      const layoutFile = layouts[`${layoutPath}/layout.jsx`] || layouts[`${layoutPath}/layout.tsx`]
+      if (layoutFile) {
+        layoutComponents.push(layoutFile.default)
+        break // Stop at first found layout
+      }
     }
     
-    layoutPaths.forEach(lp => {
-      const layoutFile = layouts[`${lp}/layout.jsx`] || layouts[`${lp}/layout.tsx`]
-      if (layoutFile) layoutComponents.push(layoutFile.default)
-    })
+    // If no nested layout found, use root layout
+    if (layoutComponents.length === 0) {
+      const rootLayout = layouts['../../app/layout.jsx'] || layouts['../../app/layout.tsx']
+      if (rootLayout) {
+        layoutComponents.push(rootLayout.default)
+      }
+    }
     
     const module = pageModules[path]
     const sourceCode = pages[path] || ''
@@ -55,7 +59,44 @@ export function generateRoutes() {
     })
   }
   
-  return routes
+  return routes.sort((a, b) => {
+    const aScore = a.path.includes('*') ? 0 : a.path.includes(':') ? 1 : 2
+    const bScore = b.path.includes('*') ? 0 : b.path.includes(':') ? 1 : 2
+    return bScore - aScore
+  })
+}
+
+export function matchRoute(url, routes) {
+  const urlObj = new URL(url, 'http://localhost')
+  // Remove trailing slash except for root
+  const pathname = urlObj.pathname === '/' ? '/' : urlObj.pathname.replace(/\/$/, '')
+  const searchParams = Object.fromEntries(urlObj.searchParams)
+  
+  for (const route of routes) {
+    const pattern = route.path
+      .replace(/\*/g, '(.*)')
+      .replace(/:(\w+)/g, '([^/]+)')
+    
+    const regex = new RegExp(`^${pattern}$`)
+    const match = pathname.match(regex)
+    
+    if (match) {
+      const paramNames = [...route.path.matchAll(/:(\w+)/g)].map(m => m[1])
+      const params = {}
+      
+      paramNames.forEach((name, i) => {
+        params[name] = match[i + 1]
+      })
+      
+      return {
+        ...route,
+        params,
+        searchParams
+      }
+    }
+  }
+  
+  return null
 }
 
 export function generateApiRoutes() {

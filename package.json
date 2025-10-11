@@ -5,9 +5,11 @@
   "main": "index.js",
   "scripts": {
     "dev": "node src/core/server.js",
-    "build": "vite build",
-    "start": "node dist/server/index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "npm run build:client && npm run build:server",
+    "build:client": "vite build",
+    "build:server": "vite build --config vite.config.server.js",
+    "start": "node dist/server/server.js"
+
   },
   "keywords": [],
   "author": "",
