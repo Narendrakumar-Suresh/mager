@@ -1,0 +1,19 @@
+{
+  "name": "@framework/cli",
+  "version": "0.0.1",
+  "type": "module",
+  "bin": {
+    "framework": "./bin/cli.js"
+  },
+  "dependencies": {
+    "@framework/core": "workspace:*",
+    "@framework/router": "workspace:*",
+    "@trpc/client": "^11.6.0",
+    "@trpc/server": "^11.6.0",
+    "@vitejs/plugin-react-swc": "^4.1.0",
+    "cac": "^6.7.14",
+    "h3": "2.0.1-rc.2",
+    "nitropack": "^2.12.7",
+    "vite": "^7.1.10"
+  }
+}

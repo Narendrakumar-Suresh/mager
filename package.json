@@ -1,0 +1,14 @@
+{
+  "name": "framework",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter @framework/cli dev",
+    "build": "pnpm -r build"
+  },
+  "devDependencies": {
+    "@types/node": "^24.8.0",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "typescript": "^5.9.3"
+  }
+}
